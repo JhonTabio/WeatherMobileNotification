@@ -5,6 +5,8 @@
 """
 import http.client
 import json
+import smtplib
+import os
 
 WEATHER_CODES = {
     0: "Clear Sky",
@@ -36,7 +38,7 @@ WEATHER_CODES = {
     96: "Thunderstorm with Slight Hail",
     99: "Thunderstorm with Heavy Hail"}
 
-def convertCelsiusToFahrenheit(temp: float):
+def convertCelsiusToFahrenheit(temp: float) -> float:
     return (temp * (9 / 5) + 32)
 
 def getJSONInfo(longitude: float, latitude: float) -> dict:
@@ -62,11 +64,44 @@ def parseJSON(json: dict):
     print("Winddirection: ", json.get("current_weather").get("winddirection"))
     print("Weather code: ", WEATHER_CODES.get(json.get("current_weather").get("weathercode")), " (", json.get("current_weather").get("weathercode"), ")")
 
+# Take in PII information
+# TODO: Change this up and use a proper database in the future (JSON[?])
+def validateInfo() -> []:
+    email_credentials = []
+    try:
+        email = open("src/emailInfo.txt", 'r')
+        email_credentials = email.read().split('\n')
+        email_credentials.pop()
+    except FileNotFoundError:
+        print("ERROR: The email login info was not found.")
+    finally:
+        email.close()
+    
+    recipient_info = None
+
+    try:
+        recipient = open("src/recipient.txt", 'r')
+        recipient_info = recipient.read().split('\n')
+        recipient_info.pop()
+    except FileNotFoundError:
+        print("ERROR: The recipient(s) info was not found.")
+    finally:
+        recipient.close()
+
+    return [email_credentials, recipient_info]
+
+
+def sendMessage():
+    print("test")
+
 def main():
     ucfLongitude, ucfLatitude = 81.2001, 28.6024
-    json = getJSONInfo(ucfLongitude, ucfLatitude)
+    info = validateInfo()
 
-    parseJSON(json)
+    print(info)
+    #json = getJSONInfo(ucfLongitude, ucfLatitude)
+
+    #parseJSON(json)
 
 if __name__ == "__main__":
     main()
