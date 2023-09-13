@@ -45,24 +45,46 @@ def getJSONInfo(longitude: float, latitude: float) -> dict:
     host = "api.open-meteo.com" # Friendly online API
     connection = http.client.HTTPConnection(host) # Establish a connection with the host
     # Push a 'GET' request to the URL
-    connection.request("GET", f"/v1/forecast?latitude={latitude}&longitude={longitude}&current_weather=true&hourly=temperature_2m,relativehumidity_2m,windspeed_10m", headers={"Host": host})
+    connection.request("GET", f"/v1/forecast?latitude={latitude}&longitude={longitude}&current_weather=true&hourly=temperature_2m,windspeed_10m,winddirection_10m,weathercode", headers={"Host": host})
 
     response = connection.getresponse() # Retrieve a response from the connection request
     html = response.read() # Read in the payload
 
     jsonInfo = json.loads(html) # Load a json file from a string
 
-    #print(jsonInfo)
-
     return jsonInfo
 
-def parseJSON(json: dict):
-    print("Temperature ", convertCelsiusToFahrenheit(json.get("current_weather").get("temperature")), " F / ", json.get("current_weather").get("temperature"), " C")
+def parseJSON(json: dict) -> str:
+    #print("Temperature ", convertCelsiusToFahrenheit(json.get("current_weather").get("temperature")), " F / ", json.get("current_weather").get("temperature"), " C")
     #print("Timezone: ", json.get("timezone_abbreviation"))
-    print("Timezone: ", json["timezone_abbreviation"])
-    print("Windspeed: ", json.get("current_weather").get("windspeed"))
-    print("Winddirection: ", json.get("current_weather").get("winddirection"))
-    print("Weather code: ", WEATHER_CODES.get(json.get("current_weather").get("weathercode")), " (", json.get("current_weather").get("weathercode"), ")")
+    #print("Timezone: ", json["timezone_abbreviation"])
+    #print("Windspeed: ", json.get("current_weather").get("windspeed"))
+    #print("Winddirection: ", json.get("current_weather").get("winddirection"))
+    #print("Weather code: ", WEATHER_CODES.get(json.get("current_weather").get("weathercode")), " (", json.get("current_weather").get("weathercode"), ")")
+    
+    hourly = json["hourly"]["time"]
+
+    time_12 = json["current_weather"]["time"][0:11] + "12:00"
+    time_3 = json["current_weather"]["time"][0:11] + "15:00"
+    time_5 = json["current_weather"]["time"][0:11] + "17:00"
+    time_10 = json["current_weather"]["time"][0:11] + "22:00"
+
+    ret = "\n---Current Time--------------\n"
+    ret += "Temp: %.2fF / %.2fC\nWind: %s @ %s\nWeather: %s" % (convertCelsiusToFahrenheit(json["current_weather"]["temperature"]), json["current_weather"]["temperature"], json["current_weather"]["winddirection"], json["current_weather"]["windspeed"], WEATHER_CODES.get(json["current_weather"]["weathercode"]))
+
+    ret += "\n---12pm---------------------\n"
+    ret += "Temp: %.2fF / %.2fC\nWind: %s @ %s\nWeather: %s" % (convertCelsiusToFahrenheit(json["hourly"]["temperature_2m"][hourly.index(time_12)]), json["hourly"]["temperature_2m"][hourly.index(time_12)], json["hourly"]["winddirection_10m"][hourly.index(time_12)], json["hourly"]["windspeed_10m"][hourly.index(time_12)], WEATHER_CODES.get(json["hourly"]["weathercode"][hourly.index(time_12)]))
+
+    ret += "\n---3pm----------------------\n"
+    ret += "Temp: %.2fF / %.2fC\nWind: %s @ %s\nWeather: %s" % (convertCelsiusToFahrenheit(json["hourly"]["temperature_2m"][hourly.index(time_3)]), json["hourly"]["temperature_2m"][hourly.index(time_3)], json["hourly"]["winddirection_10m"][hourly.index(time_3)], json["hourly"]["windspeed_10m"][hourly.index(time_3)], WEATHER_CODES.get(json["hourly"]["weathercode"][hourly.index(time_3)]))
+
+    ret += "\n---5pm----------------------\n"
+    ret += "Temp: %.2fF / %.2fC\nWind: %s @ %s\nWeather: %s" % (convertCelsiusToFahrenheit(json["hourly"]["temperature_2m"][hourly.index(time_5)]), json["hourly"]["temperature_2m"][hourly.index(time_5)], json["hourly"]["winddirection_10m"][hourly.index(time_5)], json["hourly"]["windspeed_10m"][hourly.index(time_5)], WEATHER_CODES.get(json["hourly"]["weathercode"][hourly.index(time_5)]))
+
+    ret += "\n--10pm----------------------\n"
+    ret += "Temp: %.2fF / %.2fC\nWind: %s @ %s\nWeather: %s" % (convertCelsiusToFahrenheit(json["hourly"]["temperature_2m"][hourly.index(time_10)]), json["hourly"]["temperature_2m"][hourly.index(time_10)], json["hourly"]["winddirection_10m"][hourly.index(time_10)], json["hourly"]["windspeed_10m"][hourly.index(time_10)], WEATHER_CODES.get(json["hourly"]["weathercode"][hourly.index(time_10)]))
+
+    return ret
 
 # Take in PII information
 # TODO: Change this up and use a proper database in the future (JSON[?])
@@ -91,14 +113,28 @@ def validateInfo() -> []:
     return [email_credentials, recipient_info]
 
 
-def sendMessage():
-    print("test")
+def sendMessage(user: str, password: str, recipient: str, header: str, msg: str):
+    try:
+        send = "From: %s\nTo:%s\nSubject: Daily Weather Notification (%s)\n%s" % (user, recipient, header, msg)
+
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+
+        server.starttls()
+
+        server.login(user, password)
+        server.sendmail(user, recipient, send)
+    except Exception:
+        print("ERROR: There was an error formatting the Email.")
+    finally:
+        server.quit()
 
 def main():
     ucfLongitude, ucfLatitude = 81.2001, 28.6024
     info = validateInfo()
 
-    print(info)
+    sendMessage(info[0][0], info[0][1], info[1][0], "UCF", parseJSON(getJSONInfo(ucfLongitude, ucfLatitude)))
+
+    #print(info)
     #json = getJSONInfo(ucfLongitude, ucfLatitude)
 
     #parseJSON(json)
