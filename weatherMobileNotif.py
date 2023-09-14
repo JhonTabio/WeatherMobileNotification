@@ -6,7 +6,11 @@
 import http.client
 import json
 import smtplib
-import os
+import sched
+
+from datetime import datetime, timedelta
+from time import sleep
+from threading import Timer
 
 WEATHER_CODES = {
     0: "Clear Sky",
@@ -55,19 +59,13 @@ def getJSONInfo(longitude: float, latitude: float) -> dict:
     return jsonInfo
 
 def parseJSON(json: dict) -> str:
-    #print("Temperature ", convertCelsiusToFahrenheit(json.get("current_weather").get("temperature")), " F / ", json.get("current_weather").get("temperature"), " C")
-    #print("Timezone: ", json.get("timezone_abbreviation"))
-    #print("Timezone: ", json["timezone_abbreviation"])
-    #print("Windspeed: ", json.get("current_weather").get("windspeed"))
-    #print("Winddirection: ", json.get("current_weather").get("winddirection"))
-    #print("Weather code: ", WEATHER_CODES.get(json.get("current_weather").get("weathercode")), " (", json.get("current_weather").get("weathercode"), ")")
-    
     hourly = json["hourly"]["time"]
 
-    time_12 = json["current_weather"]["time"][0:11] + "12:00"
-    time_3 = json["current_weather"]["time"][0:11] + "15:00"
-    time_5 = json["current_weather"]["time"][0:11] + "17:00"
-    time_10 = json["current_weather"]["time"][0:11] + "22:00"
+    # Convert UTC -> EST
+    time_12 = json["current_weather"]["time"][0:11] + "16:00"
+    time_3 = json["current_weather"]["time"][0:11] + "19:00"
+    time_5 = json["current_weather"]["time"][0:11] + "21:00"
+    time_10 = json["current_weather"]["time"][0:11] + "01:00"
 
     ret = "\n---Current Time--------------\n"
     ret += "Temp: %.2fF / %.2fC\nWind: %s @ %s\nWeather: %s" % (convertCelsiusToFahrenheit(json["current_weather"]["temperature"]), json["current_weather"]["temperature"], json["current_weather"]["winddirection"], json["current_weather"]["windspeed"], WEATHER_CODES.get(json["current_weather"]["weathercode"]))
@@ -128,17 +126,19 @@ def sendMessage(user: str, password: str, recipient: str, header: str, msg: str)
     finally:
         server.quit()
 
+def getSecondDelay() -> float:
+    date = datetime.today()
+    updated_date = date.replace(day=date.day, hour=10, minute=0, second=0, microsecond=0) + timedelta(days=1)
+    delta_t = updated_date - date
+    return delta_t.total_seconds()
+
 def main():
     ucfLongitude, ucfLatitude = 81.2001, 28.6024
     info = validateInfo()
 
     sendMessage(info[0][0], info[0][1], info[1][0], "UCF", parseJSON(getJSONInfo(ucfLongitude, ucfLatitude)))
 
-    #print(info)
-    #json = getJSONInfo(ucfLongitude, ucfLatitude)
-
-    #parseJSON(json)
-
 if __name__ == "__main__":
-    main()
-    print("Completed")
+    while True:
+        main()
+        sleep(getSecondDelay())
