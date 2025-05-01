@@ -84,7 +84,8 @@ Key Functions
 </ol>
 
 The script will then run indefinitely, sending a daily weather update at 10 AM for the location (latitude 28.6024, longitude -81.2001, corresponding to UCF).
-Customization
+
+<h4>Customization</h4>
 <ul>
     <li><b>Change Location</b>: Update the ucfLongitude and ucfLatitude values in the main() function to the desired location's coordinates.</li>
     <li><b>Change Notification Time</b>: Adjust the time of day in the getSecondDelay() function where the updated_date is set (currently, it's set to 10 AM daily).</li>
